@@ -72,15 +72,15 @@ pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLink
 
 	let mut links = Vec::new(); // 1.
 
-	while !s.is_empty() { // 2.
+	loop { // 2.
 
 		s = s.trim_start_matches(is_http_whitespace); // 2.1.
 
 		if s.starts_with('<') {
 			s = &s[1..]; // 2.3.
 		} else {
-			return Err(SyntaxError("Link doesn't start with a \"<\"".to_string())); // 2.2.
-		};
+			return Err(SyntaxError("Expected \"<\"".to_string())); // 2.2.
+		}
 
 		// 2.4/2.5.
 		let (target_str, params_str) = s.split_at(s.find('>').ok_or(SyntaxError("Unclosed <".to_string()))?);
@@ -150,6 +150,14 @@ pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLink
 				context: context.to_owned(),
 				attributes: attributes.to_owned()
 			});
+		}
+
+		s = s.trim_start_matches(is_http_whitespace);
+		if s.is_empty() { break; }
+		if s.starts_with(',') {
+			s = &s[1..];
+		} else {
+			return Err(SyntaxError("Expected \",\"".to_string())); // 2.2.
 		}
 	}
 	Ok(links) // 3.
