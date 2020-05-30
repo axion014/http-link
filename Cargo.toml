@@ -3,8 +3,8 @@ name = "http-link"
 version = "1.0.0"
 authors = ["axion014 <axion014@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "naive implementation of https://tools.ietf.org/html/rfc8288#appendix-B.2 for parsing HTTP Link header value"
+license ="MIT"
 
 [dependencies]
 
