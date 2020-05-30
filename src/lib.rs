@@ -7,7 +7,7 @@ use percent_encoding::percent_decode_str;
  */
 use url::Url;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Link {
 	pub target: Url,
 	pub rel: String,
@@ -15,7 +15,7 @@ pub struct Link {
 	pub attributes: Vec<Parameter>,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Parameter {
 	pub name: String,
 	pub value: String
