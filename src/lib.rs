@@ -1,10 +1,7 @@
 use std::fmt;
 use percent_encoding::{utf8_percent_encode, percent_decode_str, AsciiSet, CONTROLS};
 
-/*
- * WHATWG URL is equivalent of W3C URI with best effort handling for non-ASCII characters.
- * According to RFC 8288, it's fine.
- */
+// WHATWG URL is equivalent of W3C URI with best effort handling for non-ASCII characters
 use url::Url;
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -197,7 +194,7 @@ pub fn parse_params(mut s: &str) -> Result<Vec<Parameter>, ParseLinkError> {
 				s = &s[1..];
 				v
 			} else { // 2.7.4.
-				let split = s.split_at(s.find(|ch| ch == ';' || ch == ',').or(Some(s.len())).unwrap());
+				let split = s.split_at(s.find(|ch| ch == ';' || ch == ',').unwrap_or(s.len()));
 				s = split.1;
 				split.0.to_string()
 			};
