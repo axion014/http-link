@@ -106,7 +106,7 @@ pub fn parse_link_header(s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkErro
 
 		for star_param_name in star_param_names { // 2.16
 			let base_param_name = &star_param_name[..(star_param_name.len() - 1)]; // 2.16.1.
-			take_mut::take(&mut attributes, |attributes| attributes.into_iter().filter_map(|p| {
+			let tmp = attributes.into_iter().filter_map(|p| {
 				if p.name == base_param_name { None } // 2.16.3.
 				else {
 					if p.name == star_param_name { // 2.16.4.
@@ -118,7 +118,8 @@ pub fn parse_link_header(s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkErro
 						Some(p)
 					}
 				}
-			}).collect());
+			}).collect();
+			attributes = tmp;
 		}
 
 		// 2.17

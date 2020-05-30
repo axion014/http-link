@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 
 percent-encoding = "2.1.0"
-take_mut = "0.2.2"
 url = "2.1.1"
