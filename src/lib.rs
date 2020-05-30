@@ -1,5 +1,5 @@
 use std::fmt;
-use percent_encoding::percent_decode_str;
+use percent_encoding::{utf8_percent_encode, percent_decode_str, AsciiSet, CONTROLS};
 
 /*
  * WHATWG URL is equivalent of W3C URI with best effort handling for non-ASCII characters.
@@ -15,10 +15,30 @@ pub struct Link {
 	pub attributes: Vec<Parameter>,
 }
 
+impl fmt::Display for Link {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "<{}>; rel={}; anchor={}{}", self.target, self.rel, self.context,
+			self.attributes.iter().fold("".to_string(), |acc, p| acc + "; " + &p.to_string()))
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Parameter {
 	pub name: String,
 	pub value: String
+}
+
+const VALUE: &AsciiSet = &CONTROLS.add(b'*').add(b'\'').add(b'%');
+
+impl fmt::Display for Parameter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		if self.value.is_ascii() {
+			write!(f, "{}={}", self.name, self.value)
+		} else {
+			write!(f, "{}={}", self.name.clone() + "*", "UTF-8''".to_string() +
+				utf8_percent_encode(&self.value, VALUE).to_string().as_str())
+		}
+    }
 }
 
 #[derive(Debug)]
@@ -198,14 +218,22 @@ pub fn parse_params(mut s: &str) -> Result<Vec<Parameter>, ParseLinkError> {
 		params.push(Parameter { name, value }); // 2.10.
 	}
 	Ok(params)
+#[cfg(test)]
+fn assert_parse_stringify(s: &str, base: &Url, expected: Vec<Link>, expected_str: &str) {
+	let parsed = parse_link_header(s, base).unwrap();
+	assert_eq!(parsed, expected);
+	let mut iter = parsed.iter();
+	let first = iter.next().map(|p| p.to_string()).unwrap_or("".to_string());
+	assert_eq!(format!("{}", iter.fold(first, |acc, v| acc + ", " + &v.to_string())), expected_str);
 }
 
 #[test]
 fn rfc8288_examples() -> Result<(), ParseLinkError> {
 	let base = Url::parse("http://example.com").unwrap();
-	assert_eq!(
-		parse_link_header(r#"<http://example.com/TheBook/chapter2>; rel="previous"; title="previous chapter""#, &base).unwrap(),
-		vec![Link {
+
+	assert_parse_stringify(
+		r#"<http://example.com/TheBook/chapter2>; rel="previous"; title="previous chapter""#,
+		&base, vec![Link {
 			target: Url::parse("http://example.com/TheBook/chapter2").unwrap(),
 			rel: "previous".to_string(),
 			context: base.clone(),
@@ -213,22 +241,26 @@ fn rfc8288_examples() -> Result<(), ParseLinkError> {
 				name: "title".to_string(),
 				value: "previous chapter".to_string()
 			}]
-		}]
+		}],
+		"<http://example.com/TheBook/chapter2>; rel=previous; anchor=http://example.com/; title=previous chapter"
 	);
-	assert_eq!(parse_link_header(r#"</>; rel="http://example.net/foo""#, &base).unwrap(), vec![Link {
+
+	assert_parse_stringify(r#"</>; rel="http://example.net/foo""#, &base, vec![Link {
 		target: base.clone(),
 		rel: "http://example.net/foo".to_string(),
 		context: base.clone(),
 		attributes: Vec::new()
-	}]);
-	assert_eq!(parse_link_header(r##"</terms>; rel="copyright"; anchor="#foo""##, &base).unwrap(), vec![Link {
+	}], "<http://example.com/>; rel=http://example.net/foo; anchor=http://example.com/");
+
+	assert_parse_stringify(r##"</terms>; rel="copyright"; anchor="#foo""##, &base, vec![Link {
 		target: Url::parse("http://example.com/terms").unwrap(),
 		rel: "copyright".to_string(),
 		context: Url::parse("http://example.com#foo").unwrap(),
 		attributes: Vec::new()
-	}]);
-	assert_eq!(parse_link_header("</TheBook/chapter2>; rel=\"previous\"; title*=UTF-8'de'letztes%20Kapitel, \
-								</TheBook/chapter4>; rel=\"next\"; title*=UTF-8'de'n%c3%a4chstes%20Kapitel", &base).unwrap(),
+	}], "<http://example.com/terms>; rel=copyright; anchor=http://example.com/#foo");
+
+	assert_parse_stringify("</TheBook/chapter2>; rel=\"previous\"; title*=UTF-8'de'letztes%20Kapitel, \
+						</TheBook/chapter4>; rel=\"next\"; title*=UTF-8'de'n%c3%a4chstes%20Kapitel", &base,
 		vec![Link {
 			target: Url::parse("http://example.com/TheBook/chapter2").unwrap(),
 			rel: "previous".to_string(),
@@ -245,9 +277,13 @@ fn rfc8288_examples() -> Result<(), ParseLinkError> {
 				name: "title".to_string(),
 				value: "nächstes Kapitel".to_string()
 			}]
-		}]
+		}],
+		"<http://example.com/TheBook/chapter2>; rel=previous; anchor=http://example.com/; \
+		title=letztes Kapitel, <http://example.com/TheBook/chapter4>; rel=next; \
+		anchor=http://example.com/; title*=UTF-8''n%C3%A4chstes Kapitel"
 	);
-	assert_eq!(parse_link_header(r#"<http://example.org/>; rel="start http://example.net/relation/other""#, &base).unwrap(),
+
+	assert_parse_stringify(r#"<http://example.org/>; rel="start http://example.net/relation/other""#, &base,
 		vec![Link {
 			target: Url::parse("http://example.org/").unwrap(),
 			rel: "start".to_string(),
@@ -256,9 +292,12 @@ fn rfc8288_examples() -> Result<(), ParseLinkError> {
 		}, Link {
 			target: Url::parse("http://example.org/").unwrap(),
 			rel: "http://example.net/relation/other".to_string(),
-			context: base,
+			context: base.clone(),
 			attributes: Vec::new()
-		}]
+		}],
+		"<http://example.org/>; rel=start; anchor=http://example.com/, \
+		<http://example.org/>; rel=http://example.net/relation/other; anchor=http://example.com/"
 	);
+
 	Ok(())
 }
