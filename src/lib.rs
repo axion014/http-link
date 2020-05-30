@@ -68,24 +68,27 @@ fn is_http_whitespace(ch: char) -> bool {
 static UNIQUE_ATTRIBUTES: [&str; 4] = ["media", "title", "title*", "type"];
 
 // https://tools.ietf.org/html/rfc8288#appendix-B.2
-pub fn parse_link_header(s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkError> {
+pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkError> {
 
 	let mut links = Vec::new(); // 1.
 
-	for mut v in s.split(',') { // 2.
+	while !s.is_empty() { // 2.
 
-		v = v.trim_start_matches(is_http_whitespace); // 2.1.
+		s = s.trim_start_matches(is_http_whitespace); // 2.1.
 
-		if v.starts_with('<') {
-			v = &v[1..]; // 2.3.
+		if s.starts_with('<') {
+			s = &s[1..]; // 2.3.
 		} else {
 			return Err(SyntaxError("Link doesn't start with a \"<\"".to_string())); // 2.2.
 		};
 
 		// 2.4/2.5.
-		let (target_str, params_str) = v.split_at(v.find('>').ok_or(SyntaxError("Unclosed <".to_string()))?);
+		let (target_str, params_str) = s.split_at(s.find('>').ok_or(SyntaxError("Unclosed <".to_string()))?);
 
-		let params = parse_params(&params_str[1..])?; // 2.6/2.7.
+		// 2.6/2.7.
+		let parse_result = parse_params(&params_str[1..])?;
+		let params = parse_result.0;
+		s = parse_result.1;
 
 		let target = Url::options().base_url(Some(base)).parse(target_str).map_err(|e| InvaildUrl(e))?; // 2.8.
 
@@ -153,11 +156,11 @@ pub fn parse_link_header(s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkErro
 }
 
 // https://tools.ietf.org/html/rfc8288#appendix-B.3
-pub fn parse_params(mut s: &str) -> Result<Vec<Parameter>, ParseLinkError> {
+pub fn parse_params(mut s: &str) -> Result<(Vec<Parameter>, &str), ParseLinkError> {
 
 	let mut params = Vec::new(); // 1.
 
-	while !s.is_empty() { // 2.
+	while !(s.is_empty() || s.starts_with(',')) { // 2.
 
 		s = s.trim_start_matches(is_http_whitespace); // 2.1.
 
@@ -213,8 +216,11 @@ pub fn parse_params(mut s: &str) -> Result<Vec<Parameter>, ParseLinkError> {
 			} else { value }
 		} else { "".to_string() }; // 2.8.
 		params.push(Parameter { name, value }); // 2.10.
+		s = s.trim_start_matches(is_http_whitespace); // 2.11.
 	}
-	Ok(params)
+	Ok((params, s))
+}
+
 #[cfg(test)]
 fn assert_parse_stringify(s: &str, base: &Url, expected: Vec<Link>, expected_str: &str) {
 	let parsed = parse_link_header(s, base).unwrap();
