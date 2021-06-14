@@ -1,9 +1,13 @@
+//! Simple crate for parsing HTTP Link header.
+//! Naively implements algorithms described in [RFC8288](https://datatracker.ietf.org/doc/html/rfc8288#appendix-B).
+
 use percent_encoding::{percent_decode_str, utf8_percent_encode, AsciiSet, CONTROLS};
 use std::fmt;
 
 // WHATWG URL is equivalent of W3C URI with best effort handling for non-ASCII characters.
 use url::Url;
 
+/// A parsed link object.
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Link {
 	pub target: Url,
@@ -19,6 +23,7 @@ impl fmt::Display for Link {
 	}
 }
 
+/// An attribute in a parsed link object.
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Parameter {
 	pub name: String,
@@ -37,6 +42,7 @@ impl fmt::Display for Parameter {
 	}
 }
 
+/// Errors that can occur during parsing.
 #[derive(Debug)]
 pub enum ParseLinkError {
 	SyntaxError(String),
@@ -66,7 +72,7 @@ fn is_http_whitespace(ch: char) -> bool {
 
 static UNIQUE_ATTRIBUTES: [&str; 4] = ["media", "title", "title*", "type"];
 
-// https://tools.ietf.org/html/rfc8288#appendix-B.2
+/// Parse a Link header with given base URL.
 pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLinkError> {
 	let mut links = Vec::new(); // 1.
 
@@ -180,7 +186,8 @@ pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLink
 	Ok(links) // 3.
 }
 
-// https://tools.ietf.org/html/rfc8288#appendix-B.3
+/// Parse parameters in a Link header.
+/// Returns parsed parameters and remainder of the input string.
 pub fn parse_params(mut s: &str) -> Result<(Vec<Parameter>, &str), ParseLinkError> {
 	let mut params = Vec::new(); // 1.
 
