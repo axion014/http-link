@@ -40,7 +40,7 @@ impl fmt::Display for Parameter {
 #[derive(Debug)]
 pub enum ParseLinkError {
 	SyntaxError(String),
-	InvaildUrl(url::ParseError),
+	InvalidUrl(url::ParseError),
 	BadEncoding(std::str::Utf8Error),
 	UnknownEncoding
 }
@@ -51,7 +51,7 @@ impl fmt::Display for ParseLinkError {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			SyntaxError(description) => write!(f, "Syntax error: {}", description),
-			InvaildUrl(e) => write!(f, "{}", e),
+			InvalidUrl(e) => write!(f, "{}", e),
 			BadEncoding(e) => write!(f, "Bad charactor encoding in attributes: {}", e),
 			UnknownEncoding => write!(f, "Unknown charactor encoding in attributes")
 		}
@@ -89,7 +89,7 @@ pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLink
 		let params = parse_result.0;
 		s = parse_result.1;
 
-		let target = Url::options().base_url(Some(base)).parse(target_str).map_err(|e| InvaildUrl(e))?; // 2.8.
+		let target = Url::options().base_url(Some(base)).parse(target_str).map_err(|e| InvalidUrl(e))?; // 2.8.
 
 		// 2.9/2.10.
 		let relations = params
@@ -103,7 +103,7 @@ pub fn parse_link_header(mut s: &str, base: &Url) -> Result<Vec<Link>, ParseLink
 		// 2.11/2.12.
 		let anchor = params.iter().find(|p| p.name == "anchor");
 		let context = if let Some(anchor) = anchor {
-			Url::options().base_url(Some(base)).parse(&anchor.value).map_err(|e| InvaildUrl(e))?
+			Url::options().base_url(Some(base)).parse(&anchor.value).map_err(|e| InvalidUrl(e))?
 		} else {
 			base.to_owned()
 		};
