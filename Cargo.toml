@@ -1,12 +1,13 @@
 [package]
 name = "http-link"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["axion014 <axion014@gmail.com>"]
 edition = "2018"
-description = "naive implementation of https://tools.ietf.org/html/rfc8288#appendix-B.2 for parsing HTTP Link header value"
-license ="MIT"
+description = "naive implementation of RFC8288 for parsing HTTP Link header value"
+license = "MIT"
+repository = "https://github.com/axion014/http-link/"
 
 [dependencies]
 
 percent-encoding = "2.1.0"
-url = "2.1.1"
+url = "2.2.2"
